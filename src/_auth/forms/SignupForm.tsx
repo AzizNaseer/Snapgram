@@ -1,20 +1,22 @@
 import * as z from "zod";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import Loader from "@/components/shared/Loader";
+import { useToast } from "@/components/ui/use-toast";
 
-
-
+import { useCreateUserAccount, useSignInAccount } from "@/lib/react-query/queries";
 import { SignupValidation } from "@/lib/validation";
-
+import { useUserContext } from "@/context/AuthContext";
 
 const SignupForm = () => {
- 
-
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const { checkAuthUser, isLoading: isUserLoading } = useUserContext();
 
   const form = useForm<z.infer<typeof SignupValidation>>({
     resolver: zodResolver(SignupValidation),
@@ -26,11 +28,51 @@ const SignupForm = () => {
     },
   });
 
-
+  // Queries
+  const { mutateAsync: createUserAccount, isPending: isCreatingAccount } = useCreateUserAccount();
+  const { mutateAsync: signInAccount, isPending: isSigningInUser } = useSignInAccount();
 
   // Handler
   const handleSignup = async (user: z.infer<typeof SignupValidation>) => {
-   
+    try {
+      const newUser = await createUserAccount(user);
+
+      if (!newUser) {
+        toast({ title: "Sign up failed. Please try again.", });
+        
+        return;
+      }
+
+      const session = await signInAccount({
+        email: user.email,
+        password: user.password,
+      });
+
+      if (!session) {
+        toast({ title: "Something went wrong. Please login your new account", });
+        
+        navigate("/sign-in");
+        
+        return;
+      }
+
+      const isLoggedIn = await checkAuthUser();
+
+      if (isLoggedIn) {
+
+        form.reset();
+
+        navigate("/");
+
+      } else {
+        toast({ title: "Login failed. Please try again.", });
+        
+        return;
+      }
+      
+    } catch (error) {
+      console.log({ error });
+    }
   };
 
   return (
@@ -55,7 +97,7 @@ const SignupForm = () => {
               <FormItem>
                 <FormLabel className="shad-form_label">Name</FormLabel>
                 <FormControl>
-                  <Input type="text" className="shad-input" />
+                  <Input type="text" className="shad-input" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -69,7 +111,7 @@ const SignupForm = () => {
               <FormItem>
                 <FormLabel className="shad-form_label">Username</FormLabel>
                 <FormControl>
-                  <Input type="text" className="shad-input"  />
+                  <Input type="text" className="shad-input" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -83,7 +125,7 @@ const SignupForm = () => {
               <FormItem>
                 <FormLabel className="shad-form_label">Email</FormLabel>
                 <FormControl>
-                  <Input type="text" className="shad-input" />
+                  <Input type="text" className="shad-input" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -97,7 +139,7 @@ const SignupForm = () => {
               <FormItem>
                 <FormLabel className="shad-form_label">Password</FormLabel>
                 <FormControl>
-                  <Input type="password" className="shad-input"  />
+                  <Input type="password" className="shad-input" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -105,7 +147,13 @@ const SignupForm = () => {
           />
 
           <Button type="submit" className="shad-button_primary">
-          Sign Up
+            {isCreatingAccount || isSigningInUser || isUserLoading ? (
+              <div className="flex-center gap-2">
+                <Loader /> Loading...
+              </div>
+            ) : (
+              "Sign Up"
+            )}
           </Button>
 
           <p className="text-small-regular text-light-2 text-center mt-2">

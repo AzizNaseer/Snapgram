@@ -6,6 +6,8 @@ import Explore from "./_root/Pages/Explore"
 import RootLayout from "./_root/RootLayout"
 import "./globals.css"
 import { Route, Routes } from "react-router-dom"
+import { Toaster } from "@/components/ui/toaster";
+
 const App = () => {
   return (
     <main className="flex h-screen">
@@ -26,6 +28,7 @@ const App = () => {
 
       </Routes>
 
+      <Toaster />
 
 
     </main>
